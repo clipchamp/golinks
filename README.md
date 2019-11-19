@@ -1,7 +1,9 @@
 # go/ links
+
 Just another Google-like go/ short-link service, deployed on GCP and integrated with G Suite!
 
 ## Background
+
 While volunteering at Google Beijing, I learned that Google has an internal URL shortener
 that allows users to register URL shortcuts for lengthy URLs. For example, if you are
 interested in the first release preview of Flutter, you only need to visit
@@ -19,6 +21,7 @@ Many companies now have something similar, and there's even a "go/ link as a ser
 for [MUNPANEL](https://munpanel.com), a student project of mine.
 
 ## Stack
+
 It's built on top of [Google App Engine](https://cloud.google.com/appengine/), and
 [Google Cloud Datastore](https://cloud.google.com/datastore/), so it scales really well,
 and is really easy to deploy. It's written in Python 2.7, and I haven't tested support for
@@ -44,6 +47,7 @@ It integrates directly with [G Suite](https://gsuite.google.com). It also integr
 [Google Groups](https://groups.google.com) for more advanced access control.
 
 ## Usage
+
 You can easily log in to your G Suite account, view the links you created, create new links,
 modify links, delete links, and see how many times your links have been clicked, all on the
 web portal.
@@ -52,43 +56,28 @@ For every link, you can specify whether it requires G Suite login. You can also 
 if it requires G Suite user to belong to certain Google Groups to access that specific URL.
 
 ## Deploy
+
 1. Create a new GCP project.
 2. `pip install -t lib -r requirements.txt`
 3. Copy `config.py.example` to `config.py` and modify accordingly
 4. `gcloud app deploy app.yaml`
 5. Go to GCP app engine settings, set `Google authentication` to `Google Apps domain` for
-G Suite integration
+   G Suite integration
 6. In App Engine settings, configure your custom domain (e.g. go.corp.munpanel.com)
 7. Visit the domain you just set, and enjoy :-)
 
-## Google Groups Integration
-We support integration with Google Groups for more advanced access control on top of 
-regular G Suite integration. For each link, you can specify users in which internal Google 
-Group have access.
-
-To set up Google Groups Integration, follow the following steps:
-1. Turn on `ENABLE_GOOGLE_GROUPS_INTEGRATION` in `config.py` and set `GSUITE_DIRECTORY_ADMIN_USER`
-to a G Suite admin user in your domain.
-2. Go to [Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts) settings for your
-GCP project and create a new service account (you don't need to grant any GCP project or user access to
-the service account); enable `G Suite Domain-wide Delegation` for it. Download json format
-key and put it as `credentials.json` in your GAE project root.
-3. Go to [G Suite Admin](https://admin.google.com), select `Security`, `Advanced Setttings`,
-`Manage API Access`
-4. Authorize a new access, set `Client Name` to the `Client ID` under `G Suite Domain-wide
-Delegation`, set scope to
-`https://www.googleapis.com/auth/admin.directory.group.readonly, https://www.googleapis.com/auth/admin.directory.group.member.readonly `
-5. Go to [GCP API Library](https://console.cloud.google.com/apis/api/admin.googleapis.com/overview) and enable
-`Admin SDK` API for your GCP project.
-
 ## Contributing
-Contribution is welcome! Feel free to send pull requests ^_^
+
+Contribution is welcome! Feel free to send pull requests ^\_^
 
 ## License
+
 [MIT License](LICENSE)
 
 ## Author
+
 [Adam Yi](https://github.com/adamyi)
 
 ## Disclaimer
+
 This product is neither endorsed nor supported by Google LLC.

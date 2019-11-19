@@ -6,7 +6,6 @@ from urlparse import urlparse
 import logging
 import webapp2
 import config
-import gsuite
 
 from third_party import xsrfutil
 
@@ -52,16 +51,12 @@ class ShowLinks(webapp2.RequestHandler):
     if not user:
       self.redirect(users.create_login_url(self.request.path))
       return
-    sign_out_link = users.create_logout_url('/')
-    is_admin = users.is_current_user_admin()
-    if param == "all" and is_admin:
+    if param == "all":
       links = Link.query().fetch()
     else:
       links = Link.query(Link.owner_id == user.user_id()).fetch()
     context = {
         "links": links,
-        "is_admin": is_admin,
-        "sign_out_link": sign_out_link,
         "fqdn": config.GOLINKS_FQDN,
         "hostname": config.GOLINKS_HOSTNAME
     }
@@ -140,19 +135,6 @@ class EditLink(webapp2.RequestHandler):
     else:
       l.owner_id = user.user_id()
       l.owner_name = user.nickname()
-    if config.ENABLE_GOOGLE_GROUPS_INTEGRATION:
-      groups = map(lambda x: x.strip(), visibility.split(';'))
-      for group in groups:
-        if group:
-          try:
-            logging.info("Checking if %s is a valid group" % group)
-            gsuite.directory_service.groups().get(groupKey=group).execute()
-          except HttpError:
-            logging.info("%s tried to add invalid group %s to /%s" %
-                         (user.email(), group, key))
-            errorPage(self.response, 400, "Invalid group: " + group)
-            return
-      l.visibility = visibility
     l.url = url
     if public:
       l.public = True
@@ -170,12 +152,8 @@ class EditLink(webapp2.RequestHandler):
     if not user:
       self.redirect(users.create_login_url(self.request.path))
       return
-    sign_out_link = users.create_logout_url('/')
     is_admin = users.is_current_user_admin()
     context = {
-        "sign_out_link": sign_out_link,
-        "is_admin": is_admin,
-        "show_visibility": config.ENABLE_GOOGLE_GROUPS_INTEGRATION,
         'hostname': config.GOLINKS_HOSTNAME
     }
     if link:
@@ -218,39 +196,6 @@ class RedirectLink(webapp2.RequestHandler):
             self.redirect(users.create_login_url(self.request.path))
             return
           username = user.email()
-          if l.visibility:
-            if config.ENABLE_GOOGLE_GROUPS_INTEGRATION:
-              memcacheKey = "v_%s_%s" % (user.user_id(), link)
-              if not config.USE_MEMCACHE or not memcache.get(memcacheKey):
-                groups = map(lambda x: x.strip(), l.visibility.split(';'))
-                no_access = True
-                for group in groups:
-                  if group:
-                    try:
-                      # NOTES: this does support nested group members but doesn't support external users
-                      # even though we don't currently allow external users to log in, this is worth
-                      # noting if we decide to support
-                      logging.info("Checking if %s is a member of %s" %
-                                   (username, group))
-                      if gsuite.directory_service.members().hasMember(
-                          groupKey=group,
-                          memberKey=user.email()).execute()['isMember']:
-                        no_access = False
-                        break
-                    except HttpError:
-                      pass
-                if no_access:
-                  # no caching for 403 so that user can gain access immediately
-                  logging.info(
-                      "%s tried to access /%s but failed visibilitty check" %
-                      (username, link))
-                  errorPage(self.response, 403,
-                            "You do not have access to the requested resource")
-                  return
-                if config.USE_MEMCACHE:
-                  memcache.set(memcacheKey, 1, config.MEMCACHE_TTL)
-              else:
-                logging.info("%s has access to /%s by cache" % (username, link))
         l.viewcount += 1
         l.put()
         logging.info("%s accessed /%s and redirected to %s" %
@@ -263,8 +208,9 @@ class RedirectLink(webapp2.RequestHandler):
     if not link:
       self.redirect('/links/my')
       return
-    logging.info("%s accessed non-existent URL /%s" % (user.email(), link))
-    errorPage(self.response, 404, "Not Found!")
+
+    # Link doesn't exist, let's make it!
+    self.redirect('/edit/%s' % link.rstrip('/'))
 
 
 app = webapp2.WSGIApplication([
