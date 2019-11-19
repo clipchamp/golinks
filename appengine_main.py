@@ -17,8 +17,6 @@ class Link(ndb.Model):
   owner_id = ndb.StringProperty()
   owner_name = ndb.StringProperty()
   viewcount = ndb.IntegerProperty()
-  public = ndb.BooleanProperty()
-  visibility = ndb.TextProperty()
 
 
 def errorPage(response, code, message):
@@ -96,8 +94,6 @@ class EditLink(webapp2.RequestHandler):
       return
     key = self.request.get("key", "").rstrip("/")
     url = self.request.get("url", None)
-    public = self.request.get("public", 0)
-    visibility = self.request.get("visibility", "")
     if not key:
       errorPage(self.response, 400, "Shortened URL required")
       return
@@ -136,10 +132,6 @@ class EditLink(webapp2.RequestHandler):
       l.owner_id = user.user_id()
       l.owner_name = user.nickname()
     l.url = url
-    if public:
-      l.public = True
-    else:
-      l.public = False
     if not l.viewcount:
       l.viewcount = 0
     l.put()
@@ -171,8 +163,6 @@ class EditLink(webapp2.RequestHandler):
         context.update({
             'url': l.url,
             'viewcount': l.viewcount,
-            'public': l.public,
-            'visibility': l.visibility or '',
             'can_delete': 1,
             'owner': l.owner_name
         })
@@ -189,13 +179,10 @@ class RedirectLink(webapp2.RequestHandler):
       link = link.rstrip("/")
       l = Link.get_by_id(link)
       if l:
-        if l.public:
-          username = "public-user"
-        else:
-          if not user:
-            self.redirect(users.create_login_url(self.request.path))
-            return
-          username = user.email()
+        if not user:
+          self.redirect(users.create_login_url(self.request.path))
+          return
+        username = user.email()
         l.viewcount += 1
         l.put()
         logging.info("%s accessed /%s and redirected to %s" %
